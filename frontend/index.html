@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Customer Survey</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <main class="container">
+    <h1>Customer Survey</h1>
+    <p class="lead">
+      Fill out the form and submit. This page will POST your answers as JSON
+      to <code>http://127.0.0.1:5000/v1/survey</code>.
+    </p>
+
+    <form id="survey-form" novalidate>
+      <div class="field">
+        <label for="name">Full name <span aria-hidden="true">*</span></label>
+        <input id="name" name="name" type="text" maxlength="100" required />
+        <small id="nameHelp">Max 100 characters.</small>
+      </div>
+
+      <div class="field">
+        <label for="email">Email <span aria-hidden="true">*</span></label>
+        <input id="email" name="email" type="email" required />
+      </div>
+
+      <div class="field">
+        <label for="age">Age <span aria-hidden="true">*</span></label>
+        <input id="age" name="age" type="number" min="13" max="120" required />
+      </div>
+
+      <div class="field checkbox">
+        <input id="consent" name="consent" type="checkbox" required />
+        <label for="consent">I consent to submitting this survey.</label>
+      </div>
+
+      <div class="field">
+        <label for="rating">Rating (1–5) <span aria-hidden="true">*</span></label>
+        <select id="rating" name="rating" required>
+          <option value="">Select…</option>
+          <option value="1">1 - Very poor</option>
+          <option value="2">2 - Poor</option>
+          <option value="3">3 - Okay</option>
+          <option value="4">4 - Good</option>
+          <option value="5">5 - Excellent</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="comments">Comments (optional)</label>
+        <textarea id="comments" name="comments" rows="4" maxlength="1000" placeholder="Share details…"></textarea>
+      </div>
+
+      <!-- Hidden 'source' field (frontend-controlled) -->
+      <input type="hidden" id="source" name="source" value="homepage" />
+
+      <button id="submitBtn" type="submit">Submit survey</button>
+    </form>
+
+    <section id="result" class="result" aria-live="polite"></section>
+  </main>
+
+  <script>
+    const form = document.getElementById("survey-form");
+    const result = document.getElementById("result");
+    const submitBtn = document.getElementById("submitBtn");
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      result.textContent = "";
+      submitBtn.disabled = true;
+
+      // Build payload from form controls
+      const fd = new FormData(form);
+      const payload = {
+        name: (fd.get("name") || "").toString(),
+        email: (fd.get("email") || "").toString(),
+        age: Number(fd.get("age")),
+        consent: fd.get("consent") === "on",
+        rating: Number(fd.get("rating")),
+        comments: (fd.get("comments") || "").toString(),
+        source: (fd.get("source") || "other").toString()
+      };
+
+      try {
+        const res = await fetch("https://ood.hpc.virginia.edu/rnode/udc-aw32-10c1/53976/proxy/45595/v1/survey", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+
+        const body = await res.json().catch(() => ({}));
+
+        if (res.ok) {
+          result.className = "result ok";
+          result.textContent = "Thanks! Submission stored successfully.";
+          form.reset();
+        } else {
+          result.className = "result error";
+          const detail = body.detail ? JSON.stringify(body.detail) : res.statusText;
+          result.textContent = `Error ${res.status}: ${body.error || "request_failed"} — ${detail}`;
+        }
+      } catch (err) {
+        result.className = "result error";
+        result.textContent = "Network error. Is the API running at http://127.0.0.1:5000?";
+      } finally {
+        submitBtn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
